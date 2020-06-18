@@ -3,27 +3,42 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"github.com/tatsushid/go-prettytable"
 	"github.com/urfave/cli/v2"
 )
 
-type everntRecord struct {
-	Name   string
-	Output string
-	Status int
+type eventRecord struct {
+	EC EventCheck  `json:"check"`
+	EE EventEntity `json:"entity"`
 }
 
-var payload = "\n| Host               | Check Name      | Output                    |\n| :----------------- |:--------------- | :-------------------------|\n| #{check_fqdn}      | #{check_name}   | #{check_output}           |\n"
+// EventCheck for sensugo json event .check.*
+type EventCheck struct {
+	Output   string `json:"output"`
+	Metadata MD     `json:"metadata"`
+	State    string `json:"state"`
+	Status   int    `json:"status"`
+}
 
-const urlMM = "https://mattermost.mycompany.com/hooks/ayn7yhrtqtnyfguqz5cbbiuptr"
+// EventEntity for sensugo json event .entity.*
+type EventEntity struct {
+	Metadata MD `json:"metadata"`
+}
 
-var resolveText = "### :white_check_mark: The following sensu check has been resolved" + payload
-var warningText = "### :warning: Warning from sensu @channel please review the following alert." + payload
-var criticalText = "### :critical: Critial from sensu @channel please fix the following alert." + payload
+// MD for sensugo json event .check.metadata.name and .entity.metadata.name
+type MD struct {
+	Name string `json:"name"`
+}
 
+const urlMM = "https://mattermost.mycompany.com/hooks/balabalahookwebalabala"
+
+//below emoj need to be able in mattermost.mycompany.com or you can replace with any you want
+var resolveText = "### :peace_symbol: The following SensuGo check has been resolved.\n"
+var warningText = "### :warning: Warning from SensuGo @channel please review the following alert.\n"
+var criticalText = "### :fire: Critial from SensuGo @channel please fix the following alert.\n"
 var webhooks string
 
 func main() {
@@ -31,20 +46,21 @@ func main() {
 		Name: "Handler Mattermost (H&M)",
 		Authors: []*cli.Author{
 			&cli.Author{
-			  Name:  "Wen Zhou",
-			  Email: "ericchou19831101@msn.com",
+				Name:  "Wen Zhou",
+				Email: "ericchou19831101@msn.com",
 			},
 		},
-		Usage: "Send messaget to Mattermost channel",
-		Flags: []cli.Flag {
+		Version: "1.0.0",
+		Usage:   "Send messaget to Mycompany's Mattermost channel",
+		Flags: []cli.Flag{
 			&cli.StringFlag{
-			  Name: "webhook",
-			  Aliases:  []string{"w"},
-			  Value:  urlMM,
-			  Usage:  "URL to Mattermost Webhook",
-			  Destination: &webhooks,
+				Name:        "webhook",
+				Aliases:     []string{"w"},
+				Value:       urlMM,
+				Usage:       "URL to Mattermost Webhook",
+				Destination: &webhooks,
 			},
-		  },
+		},
 		Action: func(c *cli.Context) error {
 			parseEventHandler()
 			return nil
@@ -57,48 +73,48 @@ func main() {
 	}
 }
 
+// prettytalbe not work in this case, because return type is []byte, but good to call Print() for debug
+func formatTable(h, c, o string) []byte {
+	tbl, err := prettytable.NewTable([]prettytable.Column{
+		{Header: "Host", MinWidth: 10},
+		{Header: "Check", MinWidth: 8},
+		{Header: "Output"},
+	}...)
+	if err != nil {
+		panic(err)
+	}
+	tbl.Separator = " | "
+	tbl.AddRow(h, c, o)
+	return tbl.Bytes()
+}
+
 func parseEventHandler() {
+	var check eventRecord
 
-	var check everntRecord
-	//decoder := json.NewDecoder(os.Stdin)
-	//err := decoder.Decode(&check)
+	decoder := json.NewDecoder(os.Stdin)
+	err := decoder.Decode(&check)
 
-	//test data
-	jsonData := []byte(`
-	{
-		"name": "srvumgmt88",
-		"status": 1,
-		"output": "this is warning "
-	}`)
-	err := json.Unmarshal(jsonData, &check)
-	fmt.Println(check.Name)
-	fmt.Println(check.Output)
-	fmt.Println(check.Status)
-	//test done
-	text := "unknown:" + check.Name
+	payload := "| Host Name | Check Name | Output \n| :--- | :--- | :--- \n| " + check.EE.Metadata.Name + " | " + check.EC.Metadata.Name + " | " + check.EC.State + ": " + check.EC.Output + " | \n"
+
+	text := "Unknown event : " + check.EE.Metadata.Name + " on host: " + check.EE.Metadata.Name
 
 	if err != nil {
 		log.Fatalln(err)
 	} else {
-		switch status := check.Status; status {
+		switch status := check.EC.Status; status {
 		case 1:
-			fmt.Printf("set payload warning: %s", check.Output)
-			text = warningText
+			text = warningText + payload
 		case 2:
-			fmt.Printf("set payload critial: %s", check.Output)
-			text = criticalText
+			text = criticalText + payload
 		case 0:
-			fmt.Printf("set payload  ok: %s", check.Output)
-			text = resolveText
+			text = resolveText + payload
 		default:
-			fmt.Print("unknown")
 		}
 	}
 	postToMMHandler(text)
 }
 
 func postToMMHandler(text string) (status string) {
-
 	message := map[string]interface{}{
 		"username": "sensu",
 		"text":     text,
@@ -109,7 +125,7 @@ func postToMMHandler(text string) (status string) {
 		log.Fatalln(err)
 	}
 
-	resp, err := http.Post(urlMM, "application/json; charset=utf-8", bytes.NewBuffer(bytesRepresentation))
+	resp, err := http.Post(webhooks, "application/json; charset=utf-8", bytes.NewBuffer(bytesRepresentation))
 	if err != nil {
 		log.Fatalln(err)
 	}

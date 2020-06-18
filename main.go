@@ -91,7 +91,7 @@ func parseEventHandler() {
 			fmt.Printf("set payload  ok: %s", check.Output)
 			text = resolveText
 		default:
-			fmt.Print("unknown"
+			fmt.Print("unknown")
 		}
 	}
 	postToMMHandler(text)

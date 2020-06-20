@@ -33,12 +33,14 @@ type MD struct {
 	Name string `json:"name"`
 }
 
-const urlMM = "https://mattermost.mycompany.com/hooks/balabalahookwebalabala"
+const (
+  urlMM = "https://mattermost.mycompany.com/hooks/balabalahookwebalabala"
+  //below emoj need to be able in mattermost.mycompany.com or you can replace with any you want
+  resolveText = "### :peace_symbol: The following SensuGo check has been resolved.\n"
+  warningText = "### :warning: Warning from SensuGo @channel please review the following alert.\n"
+  criticalText = "### :fire: Critial from SensuGo @channel please fix the following alert.\n"
+  )
 
-//below emoj need to be able in mattermost.mycompany.com or you can replace with any you want
-var resolveText = "### :peace_symbol: The following SensuGo check has been resolved.\n"
-var warningText = "### :warning: Warning from SensuGo @channel please review the following alert.\n"
-var criticalText = "### :fire: Critial from SensuGo @channel please fix the following alert.\n"
 var webhooks string
 
 func main() {

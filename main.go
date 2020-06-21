@@ -3,11 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/tatsushid/go-prettytable"
+	"github.com/urfave/cli/v2"
 	"log"
 	"net/http"
 	"os"
-	"github.com/tatsushid/go-prettytable"
-	"github.com/urfave/cli/v2"
 )
 
 type eventRecord struct {
@@ -34,38 +34,66 @@ type MD struct {
 }
 
 const (
-  urlMM = "https://mattermost.mycompany.com/hooks/balabalahookwebalabala"
-  //below emoj need to be able in mattermost.mycompany.com or you can replace with any you want
-  resolveText = "### :peace_symbol: The following SensuGo check has been resolved.\n"
-  warningText = "### :warning: Warning from SensuGo @channel please review the following alert.\n"
-  criticalText = "### :fire: Critial from SensuGo @channel please fix the following alert.\n"
-  )
+	urlMM        = "https://mattermost.mycompany.com/hooks/balabalabalabala"
+	urlDC        = "https://mattermost.mycompany.com/hooks/gulugulugulugulu"
+	resolveText  = "### :peace_symbol: The following SensuGo check has been resolved.\n"
+	warningText  = "### :warning: Warning from SensuGo @channel please review the following alert.\n"
+	criticalText = "### :fire: Critial from SensuGo @channel please fix the following alert.\n"
+)
 
 var webhooks string
 
 func main() {
 	app := &cli.App{
-		Name: "Handler Mattermost (H&M)",
+		Name: "Handler Mattermost (HM)",
 		Authors: []*cli.Author{
 			&cli.Author{
 				Name:  "Wen Zhou",
 				Email: "ericchou19831101@msn.com",
 			},
 		},
-		Version: "1.0.0",
-		Usage:   "Send messaget to Mycompany's Mattermost channel",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "webhook",
-				Aliases:     []string{"w"},
-				Value:       urlMM,
-				Usage:       "URL to Mattermost Webhook",
-				Destination: &webhooks,
+		Version: "2.0.0",
+		Usage:   "Send messagers to Mattermost channel",
+
+		Commands: []*cli.Command{
+			{
+				Name:      "alert",
+				Aliases:   []string{"al"},
+				Usage:     "Post SensuGo alerts",
+				UsageText: " Post Sensu Go Allerts to Monitoring Channel\n\tthis should be done by Sensu Handler automatically",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "webhook",
+						Aliases:     []string{"w"},
+						Value:       urlMM,
+						Usage:       "URL to Mattermost Webhook",
+						Destination: &webhooks,
+					},
+				},
+				Action: func(c *cli.Context) error {
+					parseEventHandler()
+					return nil
+				},
 			},
-		},
-		Action: func(c *cli.Context) error {
-			parseEventHandler()
-			return nil
+			{
+				Name:      "announce",
+				Aliases:   []string{"an"},
+				Usage:     "Post announcement",
+				UsageText: "Interactive program to post announcement to channel, finish post by using 'WEN' case insensitive",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "webhook",
+						Aliases:     []string{"w"},
+						Value:       urlDC,
+						Usage:       "URL to Mattermost Webhook",
+						Destination: &webhooks,
+					},
+				},
+				Action: func(c *cli.Context) error {
+					postAnnounceHandler()
+					return nil
+				},
+			},
 		},
 	}
 
@@ -90,35 +118,9 @@ func formatTable(h, c, o string) []byte {
 	return tbl.Bytes()
 }
 
-func parseEventHandler() {
-	var check eventRecord
-
-	decoder := json.NewDecoder(os.Stdin)
-	err := decoder.Decode(&check)
-
-	payload := "| Host Name | Check Name | Output \n| :--- | :--- | :--- \n| " + check.EE.Metadata.Name + " | " + check.EC.Metadata.Name + " | " + check.EC.State + ": " + check.EC.Output + " | \n"
-
-	text := "Unknown event : " + check.EE.Metadata.Name + " on host: " + check.EE.Metadata.Name
-
-	if err != nil {
-		log.Fatalln(err)
-	} else {
-		switch status := check.EC.Status; status {
-		case 1:
-			text = warningText + payload
-		case 2:
-			text = criticalText + payload
-		case 0:
-			text = resolveText + payload
-		default:
-		}
-	}
-	postToMMHandler(text)
-}
-
-func postToMMHandler(text string) (status string) {
+func postToMMHandler(text, user string) (status string) {
 	message := map[string]interface{}{
-		"username": "sensu",
+		"username": user,
 		"text":     text,
 	}
 

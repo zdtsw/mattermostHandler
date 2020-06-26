@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"fmt"
 )
 
 type eventRecord struct {
@@ -34,16 +35,25 @@ type MD struct {
 }
 
 const (
-	urlMM        = "https://mattermost.mycompany.com/hooks/balabalabalabala"
-	urlDC        = "https://mattermost.mycompany.com/hooks/gulugulugulugulu"
+	urlMM        = "https://mattermost.mycompany.com/hooks/gulugulugulugulu"
+	urlDC        = "https://mattermost.mycompany.com/hooks/balalalalalalal"
 	resolveText  = "### :peace_symbol: The following SensuGo check has been resolved.\n"
 	warningText  = "### :warning: Warning from SensuGo @channel please review the following alert.\n"
 	criticalText = "### :fire: Critial from SensuGo @channel please fix the following alert.\n"
 )
 
-var webhooks string
+var (
+	webhooks string
+	detach   bool
+	version	string
+)
 
 func main() {
+
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Printf("version=%s\n", version)
+	  }
+
 	app := &cli.App{
 		Name: "Handler Mattermost (HM)",
 		Authors: []*cli.Author{
@@ -52,7 +62,7 @@ func main() {
 				Email: "ericchou19831101@msn.com",
 			},
 		},
-		Version: "2.0.0",
+		Version: " ",
 		Usage:   "Send messagers to Mattermost channel",
 
 		Commands: []*cli.Command{
@@ -88,17 +98,23 @@ func main() {
 						Usage:       "URL to Mattermost Webhook",
 						Destination: &webhooks,
 					},
+					&cli.BoolFlag{
+						Name:        "detach",
+						Aliases:     []string{"d"},
+						Value:       false,
+						Usage:       "Disable interactive, get input from env varialb: topic, time, announcement",
+						Destination: &detach,
+					},
 				},
 				Action: func(c *cli.Context) error {
-					postAnnounceHandler()
+					postAnnounceHandler(detach)
 					return nil
 				},
 			},
 		},
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
 }

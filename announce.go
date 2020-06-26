@@ -3,14 +3,30 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 )
 
-func postAnnounceHandler() {
+func postAnnounceHandler(detach bool) {
 
-	log.Println(webhooks)
+	if detach {
+		detachPost()
+	} else {
+		interactivePost()
+	}
+}
+func detachPost() {
+	var announcement string
+
+	announcement = "@channel\n## ANNOUNCEMENT: " + os.Getenv("topic") + "\n"
+	announcement += "__" + os.Getenv("time") + "__ \n"
+	announcement += os.Getenv("announcement") + "\nXaaS Team Delivery"
+	fmt.Println(announcement)
+	postToMMHandler(announcement, "Wen")
+
+}
+
+func interactivePost() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	var announcement, text string
